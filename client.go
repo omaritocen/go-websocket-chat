@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bytes"
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
@@ -40,6 +40,12 @@ type Client struct {
 
 	// Buffered channel of outbound messages
 	send chan []byte
+
+	// Name of the client
+	name string
+
+	// unique id for the client
+	id string
 }
 
 // readPump pumps messages from the websocket connection to the hub.
@@ -62,8 +68,7 @@ func (c *Client) readPump() {
 			break
 		}
 
-		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
-		c.hub.broadcast <- message
+		c.handleNewMessage(message)
 	}
 }
 
@@ -112,12 +117,61 @@ func (c *Client) writePump() {
 	}
 }
 
-func newClient(hub *Hub, conn *websocket.Conn) *Client {
+func newClient(hub *Hub, conn *websocket.Conn, name string) *Client {
 	return &Client{
 		hub:  hub,
 		conn: conn,
 		send: make(chan []byte, 256),
+		name: name,
+		id:   uuid.NewString(),
 	}
+}
+
+func (c *Client) handleNewMessage(jsonMessage []byte) {
+	message := decodeMessage(jsonMessage)
+	message.Author = c
+
+	switch message.Action {
+	case JoinRoomAction:
+		c.handleJoinRoomMessage(message)
+	case LeaveRoomAction:
+		c.handleLeaveRoomMessage(message)
+	case TextMessageAction:
+		c.handleTextMessage(message)
+	}
+}
+
+func (c *Client) handleJoinRoomMessage(message Message) {
+	roomName := message.Body
+	room := c.hub.getRoomByName(roomName)
+
+	if room == nil {
+		room = c.hub.createRoom(roomName)
+		go room.Run()
+		log.Printf("Created new room, Name: [%s], id: [%s]\n", room.name, room.id)
+	}
+
+	room.register <- c
+}
+
+func (c *Client) handleLeaveRoomMessage(message Message) {
+	roomName := message.Body
+	room := c.hub.getRoomByName(roomName)
+
+	if room != nil {
+		room.unregister <- c
+	}
+}
+
+func (c *Client) handleTextMessage(message Message) {
+	roomId := message.Target
+	room := c.hub.getRoomById(roomId)
+
+	if room == nil {
+		return
+	}
+
+	room.broadcast <- &message
 }
 
 func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
@@ -127,7 +181,14 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client := newClient(hub, conn)
+	clientName := r.URL.Query().Get("name")
+	if clientName == "" {
+		clientName = "NewUser"
+	}
+
+	client := newClient(hub, conn, clientName)
+	log.Printf("New user joined the system, Name: [%s], ID: [%s]\n", client.name, client.id)
+
 	hub.register <- client
 
 	go client.writePump()

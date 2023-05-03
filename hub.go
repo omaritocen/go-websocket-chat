@@ -10,6 +10,8 @@ type Hub struct {
 	// Register/Unregister requests from client
 	register   chan *Client
 	unregister chan *Client
+
+	rooms map[string]*Room
 }
 
 func NewHub() *Hub {
@@ -18,6 +20,7 @@ func NewHub() *Hub {
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
 		broadcast:  make(chan []byte, 256),
+		rooms:      make(map[string]*Room),
 	}
 }
 
@@ -55,4 +58,26 @@ func (h *Hub) handleBroadcast(message []byte) {
 			h.unregisterClient(client)
 		}
 	}
+}
+
+func (h *Hub) createRoom(name string) *Room {
+	room := newRoom(name)
+	h.rooms[room.id] = room
+	return room
+}
+
+func (h *Hub) getRoomById(id string) *Room {
+	// Handle error?
+	room, _ := h.rooms[id]
+	return room
+}
+
+func (h *Hub) getRoomByName(name string) *Room {
+	for _, room := range h.rooms {
+		if room.name == name {
+			return room
+		}
+	}
+
+	return nil
 }
