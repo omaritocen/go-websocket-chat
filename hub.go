@@ -63,6 +63,8 @@ func (h *Hub) handleBroadcast(message []byte) {
 func (h *Hub) createRoom(name string) *Room {
 	room := newRoom(name)
 	h.rooms[room.id] = room
+	go room.Run()
+
 	return room
 }
 

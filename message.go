@@ -18,34 +18,45 @@ const (
 			TextMessage
 		{
 			Author: 0x0031f (pointer to client),
-			Action: "TextMessageAction",
+			Action: "TextMessage",
 			Body: "Hello, World!",
 			Target: "room-1-id"
 		}
 	*/
-	TextMessageAction = "TextMessageAction"
+	TextMessageAction = "TextMessage"
 
 	/*
 			JoinRoomMessage
 		{
 			Author: 0x0031f (pointer to client),
-			Action: "JoinRoomAction",
+			Action: "JoinRoom",
 			Body: "room-name-1",
 			Target: nil
 		}
 	*/
-	JoinRoomAction = "JoinRoomAction"
+	JoinRoomAction = "JoinRoom"
 
 	/*
 			LeaveRoomMessage
 		{
 			Author: 0x0031f (pointer to client),
-			Action: "LeaveRoomAction",
+			Action: "LeaveRoom",
 			Body: "room-name-1",
 			Target: nil
 		}
 	*/
-	LeaveRoomAction = "LeaveRoomAction"
+	LeaveRoomAction = "LeaveRoom"
+
+	/*
+			RoomJoinedAction
+		{
+			Author: 0x0031f (pointer to client),
+			Action: "JoinedRoom",
+			Body: "room-name-1",
+			Target: "room-id-1"
+		}
+	*/
+	RoomJoinedAction = "JoinedRoom"
 )
 
 func (m *Message) encode() []byte {
