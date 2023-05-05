@@ -143,15 +143,7 @@ func (c *Client) handleNewMessage(jsonMessage []byte) {
 
 func (c *Client) handleJoinRoomMessage(message Message) {
 	roomName := message.Body
-	room := c.hub.getRoomByName(roomName)
-
-	if room == nil {
-		room = c.hub.createRoom(roomName)
-		go room.Run()
-		log.Printf("Created new room, Name: [%s], id: [%s]\n", room.name, room.id)
-	}
-
-	room.register <- c
+	c.joinRoom(roomName)
 }
 
 func (c *Client) handleLeaveRoomMessage(message Message) {
@@ -172,6 +164,30 @@ func (c *Client) handleTextMessage(message Message) {
 	}
 
 	room.broadcast <- &message
+}
+
+func (c *Client) joinRoom(roomName string) {
+	room := c.hub.getRoomByName(roomName)
+
+	if room == nil {
+		room = c.hub.createRoom(roomName)
+		log.Printf("Created new room, Name: [%s], id: [%s]\n", room.name, room.id)
+	}
+
+	room.register <- c
+
+	c.notifyRoomJoined(room)
+}
+
+func (c *Client) notifyRoomJoined(room *Room) {
+	message := &Message{
+		Author: c,
+		Action: RoomJoinedAction,
+		Body:   room.name,
+		Target: room.id,
+	}
+
+	c.send <- message.encode()
 }
 
 func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {

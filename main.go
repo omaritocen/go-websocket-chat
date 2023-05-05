@@ -26,10 +26,13 @@ func main() {
 	hub := NewHub()
 	go hub.Run()
 
-	http.HandleFunc("/", serveHome)
+	//http.HandleFunc("/", serveHome)
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		serveWs(hub, w, r)
 	})
+
+	fs := http.FileServer(http.Dir("./public"))
+	http.Handle("/", fs)
 
 	err := http.ListenAndServe(*addr, nil)
 	if err != nil {
